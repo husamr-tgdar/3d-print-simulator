@@ -1256,6 +1256,31 @@
                     </div>
                 </div>
 
+                <!-- Team & Salaries -->
+                <div class="section">
+                    <div class="section-title">Team & Salaries</div>
+                    <div class="input-group">
+                        <label>GM Min Salary (BD/mo)</label>
+                        <input type="number" id="gmMinSalary" value="100">
+                        <small>When revenue ≤ BD 300</small>
+                    </div>
+                    <div class="input-group">
+                        <label>GM Max Salary (BD/mo)</label>
+                        <input type="number" id="gmMaxSalary" value="600">
+                        <small>When revenue > BD 1,500</small>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Employee 2 Salary</label>
+                            <input type="number" id="emp2Salary" value="500">
+                        </div>
+                        <div class="input-group half">
+                            <label>Emp2 Trigger (Rev)</label>
+                            <input type="number" id="emp2Trigger" value="2500">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Equipment -->
                 <div class="section">
                     <div class="section-title">Equipment Triggers</div>
@@ -1626,10 +1651,12 @@
                 printer3Cost: parseFloat(document.getElementById('printer3Cost').value),
                 printer3Trigger: parseFloat(document.getElementById('printer3Trigger').value),
 
+                gmMinSalary: parseFloat(document.getElementById('gmMinSalary').value),
+                gmMaxSalary: parseFloat(document.getElementById('gmMaxSalary').value),
+                emp2Trigger: parseFloat(document.getElementById('emp2Trigger').value),
+                emp2Salary: parseFloat(document.getElementById('emp2Salary').value),
+
                 printerCapacity: 480,
-                gmTiers: [[300, 100], [600, 200], [900, 350], [1200, 450], [1500, 550], [99999, 600]],
-                emp2Trigger: 2500,
-                emp2Salary: 500,
                 reserveTarget: 6000,
                 minProfitTake: 300,
                 crRenewal: 166,
@@ -1637,12 +1664,28 @@
             };
         }
 
+        // Generate GM salary tiers dynamically
+        function generateGMTiers(minSalary, maxSalary) {
+            // Revenue thresholds: 300, 600, 900, 1200, 1500, infinity
+            // Salary scales linearly from min to max
+            const tiers = [
+                [300, minSalary],
+                [600, minSalary + (maxSalary - minSalary) * 0.2],
+                [900, minSalary + (maxSalary - minSalary) * 0.4],
+                [1200, minSalary + (maxSalary - minSalary) * 0.6],
+                [1500, minSalary + (maxSalary - minSalary) * 0.8],
+                [99999, maxSalary]
+            ];
+            return tiers;
+        }
+
         // GM Salary calculation
         function getGMSalary(revenue, config) {
-            for (let [threshold, salary] of config.gmTiers) {
+            const tiers = generateGMTiers(config.gmMinSalary, config.gmMaxSalary);
+            for (let [threshold, salary] of tiers) {
                 if (revenue <= threshold) return salary;
             }
-            return 600;
+            return config.gmMaxSalary;
         }
 
         // Marketing calculation
