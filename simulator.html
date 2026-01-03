@@ -1298,6 +1298,7 @@
                     <button class="tab active" data-tab="overview">Overview</button>
                     <button class="tab" data-tab="monthly">Monthly Detail</button>
                     <button class="tab" data-tab="comparison">Compare Scenarios</button>
+                    <button class="tab" data-tab="pricing">Pricing Calculator</button>
                 </div>
 
                 <!-- Overview Tab -->
@@ -1354,6 +1355,106 @@
                         <canvas id="comparisonChart"></canvas>
                     </div>
                 </div>
+
+                <!-- Pricing Calculator Tab -->
+                <div id="tab-pricing" class="tab-content">
+                    <div style="max-width: 900px; margin: 0 auto;">
+                        <div class="chart-card" style="margin-bottom: 24px;">
+                            <div class="chart-title">Print Details</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                                <div class="input-group">
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Material Weight (g)</label>
+                                    <input type="number" id="calcWeight" value="45" min="1" step="1" style="width: 100%; padding: 10px 12px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">
+                                </div>
+                                <div class="input-group">
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Print Time (hours)</label>
+                                    <input type="number" id="calcTime" value="1.5" min="0.1" step="0.1" style="width: 100%; padding: 10px 12px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">
+                                </div>
+                                <div class="input-group">
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Number of Colors</label>
+                                    <select id="calcColors" style="width: 100%; padding: 10px 12px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">
+                                        <option value="1">Single Color</option>
+                                        <option value="2">2 Colors</option>
+                                        <option value="3">3+ Colors</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Complexity</label>
+                                    <select id="calcComplexity" style="width: 100%; padding: 10px 12px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">
+                                        <option value="simple">Simple (3-5x markup)</option>
+                                        <option value="medium" selected>Medium (5-7x markup)</option>
+                                        <option value="complex">Complex (7-10x markup)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-top: 20px;">
+                                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer;">
+                                    <input type="checkbox" id="calcAssembly" style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span>Requires Assembly (+20% markup)</span>
+                                </label>
+                            </div>
+                            <button onclick="calculatePrice()" style="width: 100%; padding: 14px 20px; margin-top: 24px; background: linear-gradient(135deg, var(--accent-cyan) 0%, #0099cc 100%); color: var(--base); border: none; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'Orbitron', monospace; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 4px 16px rgba(0, 229, 255, 0.3);">
+                                Calculate Pricing
+                            </button>
+                        </div>
+
+                        <div id="pricingResults" style="display: none;">
+                            <!-- Cost Breakdown -->
+                            <div class="chart-card" style="margin-bottom: 24px;">
+                                <div class="chart-title">Cost Breakdown</div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 20px;">
+                                    <div style="background: var(--surface-raised); padding: 16px; border-radius: 10px; border: 1px solid var(--border);">
+                                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Material</div>
+                                        <div id="costMaterial" style="font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">-</div>
+                                    </div>
+                                    <div style="background: var(--surface-raised); padding: 16px; border-radius: 10px; border: 1px solid var(--border);">
+                                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Electricity</div>
+                                        <div id="costElectricity" style="font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">-</div>
+                                    </div>
+                                    <div style="background: var(--surface-raised); padding: 16px; border-radius: 10px; border: 1px solid var(--border);">
+                                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;">Packaging</div>
+                                        <div id="costPackaging" style="font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">-</div>
+                                    </div>
+                                    <div style="background: linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, var(--surface-elevated) 100%); padding: 16px; border-radius: 10px; border: 1px solid var(--accent-cyan);">
+                                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-cyan); margin-bottom: 8px; font-family: 'Orbitron', monospace;">Total Cost</div>
+                                        <div id="costTotal" style="font-size: 22px; font-weight: 700; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace;">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recommended Pricing -->
+                            <div class="chart-card">
+                                <div class="chart-title">Recommended Pricing</div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                                    <div style="background: var(--surface-raised); padding: 24px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+                                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 12px;">Minimum Price</div>
+                                        <div id="priceMin" style="font-size: 32px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px;">-</div>
+                                        <div id="priceMinMargin" style="font-size: 12px; color: var(--text-muted);">-</div>
+                                    </div>
+                                    <div style="background: linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, var(--surface-elevated) 100%); padding: 24px; border-radius: 12px; border: 2px solid var(--accent-cyan); text-align: center; box-shadow: 0 8px 24px rgba(0, 229, 255, 0.2);">
+                                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-cyan); margin-bottom: 12px; font-family: 'Orbitron', monospace;">Recommended</div>
+                                        <div id="priceRecommended" style="font-size: 36px; font-weight: 700; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px;">-</div>
+                                        <div id="priceRecMargin" style="font-size: 12px; color: var(--text-secondary);">-</div>
+                                    </div>
+                                    <div style="background: var(--surface-raised); padding: 24px; border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+                                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 12px;">Premium Price</div>
+                                        <div id="priceMax" style="font-size: 32px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px;">-</div>
+                                        <div id="priceMaxMargin" style="font-size: 12px; color: var(--text-muted);">-</div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 24px; padding: 20px; background: rgba(0, 229, 255, 0.05); border: 1px solid var(--border); border-radius: 10px;">
+                                    <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                                        <strong style="color: var(--accent-cyan);">Pricing Notes:</strong><br>
+                                        • <strong>Minimum:</strong> Covers costs with basic profit margin<br>
+                                        • <strong>Recommended:</strong> Based on complexity and market positioning<br>
+                                        • <strong>Premium:</strong> For complex/custom designs with high perceived value<br>
+                                        • Material waste: <span id="wasteNote">5%</span> included in calculations
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -1403,6 +1504,83 @@
                     input.classList.remove('error');
                 }, 500);
             }
+        }
+
+        // Pricing Calculator
+        function calculatePrice() {
+            // Get inputs
+            const weight = parseFloat(document.getElementById('calcWeight').value);
+            const time = parseFloat(document.getElementById('calcTime').value);
+            const colors = parseInt(document.getElementById('calcColors').value);
+            const complexity = document.getElementById('calcComplexity').value;
+            const assembly = document.getElementById('calcAssembly').checked;
+
+            // Constants
+            const FILAMENT_COST_PER_KG = 7; // BD per kg
+            const ELECTRICITY_RATE = 0.016; // BD per kWh
+            const PRINTER_POWER = 0.095; // kW (95W)
+            const PACKAGING = 0.20; // BD
+            const WASTE_SINGLE = 0.05; // 5%
+            const WASTE_MULTI = 0.25; // 25%
+
+            // Calculate costs
+            const wastePercent = colors === 1 ? WASTE_SINGLE : WASTE_MULTI;
+            const materialCost = (weight / 1000) * FILAMENT_COST_PER_KG * (1 + wastePercent);
+            const electricityCost = time * PRINTER_POWER * ELECTRICITY_RATE;
+            const totalCost = materialCost + electricityCost + PACKAGING;
+
+            // Determine markup range based on complexity
+            let minMarkup, maxMarkup, recommendedMarkup;
+            if (complexity === 'simple') {
+                minMarkup = 3;
+                recommendedMarkup = 4;
+                maxMarkup = 5;
+            } else if (complexity === 'medium') {
+                minMarkup = 5;
+                recommendedMarkup = 6;
+                maxMarkup = 7;
+            } else { // complex
+                minMarkup = 7;
+                recommendedMarkup = 8.5;
+                maxMarkup = 10;
+            }
+
+            // Apply assembly bonus
+            if (assembly) {
+                minMarkup *= 1.2;
+                recommendedMarkup *= 1.2;
+                maxMarkup *= 1.2;
+            }
+
+            // Calculate prices
+            const minPrice = totalCost * minMarkup;
+            const recPrice = totalCost * recommendedMarkup;
+            const maxPrice = totalCost * maxMarkup;
+
+            // Calculate margins
+            const minMargin = ((minPrice - totalCost) / minPrice * 100).toFixed(0);
+            const recMargin = ((recPrice - totalCost) / recPrice * 100).toFixed(0);
+            const maxMargin = ((maxPrice - totalCost) / maxPrice * 100).toFixed(0);
+
+            // Update UI
+            document.getElementById('costMaterial').textContent = 'BD ' + materialCost.toFixed(3);
+            document.getElementById('costElectricity').textContent = 'BD ' + electricityCost.toFixed(3);
+            document.getElementById('costPackaging').textContent = 'BD ' + PACKAGING.toFixed(2);
+            document.getElementById('costTotal').textContent = 'BD ' + totalCost.toFixed(2);
+
+            document.getElementById('priceMin').textContent = 'BD ' + minPrice.toFixed(2);
+            document.getElementById('priceMinMargin').textContent = minMargin + '% margin';
+
+            document.getElementById('priceRecommended').textContent = 'BD ' + recPrice.toFixed(2);
+            document.getElementById('priceRecMargin').textContent = recMargin + '% margin • ' + recommendedMarkup.toFixed(1) + 'x markup';
+
+            document.getElementById('priceMax').textContent = 'BD ' + maxPrice.toFixed(2);
+            document.getElementById('priceMaxMargin').textContent = maxMargin + '% margin';
+
+            document.getElementById('wasteNote').textContent = (wastePercent * 100).toFixed(0) + '%';
+
+            // Show results
+            document.getElementById('pricingResults').style.display = 'block';
         }
 
         // Global state
