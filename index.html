@@ -870,11 +870,12 @@
             left: 0;
             background: var(--surface-elevated);
             z-index: 1;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
         }
 
         th:first-child {
             background: var(--surface-raised);
-            z-index: 2;
+            z-index: 3;
         }
 
         tr:nth-child(even) td {
@@ -882,7 +883,7 @@
         }
 
         tr:nth-child(even) td:first-child {
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--surface-elevated);
         }
 
         tr:hover td {
@@ -919,6 +920,8 @@
 
         .positive { color: var(--accent-lime); }
         .negative { color: var(--accent-coral); }
+        .cash-up { color: var(--accent-lime); font-weight: 600; }
+        .cash-down { color: var(--accent-coral); font-weight: 600; }
 
         .badge {
             display: inline-block;
@@ -2162,7 +2165,7 @@
                 { section: true, label: 'CASH FLOW' },
                 { label: 'Cash Start', key: 'cashStart', format: 'bd', sub: true },
                 { label: 'Equipment', key: 'equipmentCost', format: 'bd', sub: true },
-                { label: 'Cash End', key: 'cashEnd', format: 'bd', total: true },
+                { label: 'Cash End', key: 'cashEnd', format: 'bd', total: true, cashFlow: true },
 
                 { section: true, label: 'OPERATIONS' },
                 { label: '# Printers', key: 'printers', format: 'int' },
@@ -2196,6 +2199,15 @@
                         let valCls = '';
                         if (row.highlight && val < 0) valCls = 'negative';
                         if (row.highlight && val > 0) valCls = 'positive';
+
+                        // Special handling for Cash End - compare to Cash Start
+                        if (row.cashFlow) {
+                            if (m.cashEnd < m.cashStart) {
+                                valCls = 'cash-down';
+                            } else {
+                                valCls = 'cash-up';
+                            }
+                        }
 
                         html += `<td class="${valCls}">${formatted}</td>`;
                     }
