@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Print Business Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            /* Dark Manufacturing Theme */
+            --base: #0f1419;
+            --surface: #1a1f2e;
+            --surface-elevated: #252b3d;
+            --surface-raised: #2d3548;
+
+            /* Accents - 3D Printer LEDs */
+            --accent-cyan: #00e5ff;
+            --accent-cyan-glow: rgba(0, 229, 255, 0.4);
+            --accent-coral: #ff6b6b;
+            --accent-lime: #00ff88;
+            --accent-amber: #ffaa00;
+
+            /* Text */
+            --text-primary: #f0f2f5;
+            --text-secondary: #8b93a6;
+            --text-muted: #5a6272;
+
+            /* Borders & Effects */
+            --border: #2a3240;
+            --border-bright: #3d4658;
+            --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.3);
+            --glow-coral: 0 0 20px rgba(255, 107, 107, 0.3);
+
+            /* Chart Colors */
+            --chart-cyan: rgba(0, 229, 255, 0.8);
+            --chart-coral: rgba(255, 107, 107, 0.8);
+            --chart-lime: rgba(0, 255, 136, 0.8);
+            --chart-amber: rgba(255, 170, 0, 0.8);
+            --chart-purple: rgba(168, 85, 247, 0.8);
+        }
+
+        @keyframes gridPulse {
+            0%, 100% { opacity: 0.03; }
+            50% { opacity: 0.06; }
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 10px var(--accent-cyan-glow); }
+            50% { box-shadow: 0 0 20px var(--accent-cyan-glow), 0 0 30px var(--accent-cyan-glow); }
+        }
+
+        body {
+            font-family: 'Manrope', -apple-system, sans-serif;
+            background: var(--base);
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+            opacity: 0.04;
+            pointer-events: none;
+            animation: gridPulse 4s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 360px;
+            background: linear-gradient(180deg, var(--surface) 0%, var(--surface-elevated) 100%);
+            border-right: 1px solid var(--border-bright);
+            overflow-y: auto;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border-bright);
+            border-radius: 4px;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #0a0e14 0%, var(--surface) 100%);
+            color: var(--text-primary);
+            padding: 32px 24px;
+            border-bottom: 2px solid var(--accent-cyan);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, var(--accent-cyan-glow) 0%, transparent 70%);
+            animation: glowPulse 3s ease-in-out infinite;
+        }
+
+        .sidebar-header h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--text-primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar-content {
+            padding: 24px;
+        }
+
+        .section {
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--accent-cyan);
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', monospace;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+        }
+
+        .input-group.half {
+            margin-bottom: 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            background: var(--surface-elevated);
+            box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1), var(--glow-cyan);
+        }
+
+        .input-group input:hover, .input-group select:hover {
+            border-color: var(--border-bright);
+        }
+
+        .input-group small {
+            display: block;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Orbitron', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, #0099cc 100%);
+            color: var(--base);
+            box-shadow: 0 4px 16px rgba(0, 229, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 229, 255, 0.4), var(--glow-cyan);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--surface-raised);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-bright);
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            border-color: var(--accent-cyan);
+        }
+
+        .scenario-btns {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .scenario-btn {
+            padding: 12px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-secondary);
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .scenario-btn:hover {
+            background: var(--surface-elevated);
+            border-color: var(--border-bright);
+            color: var(--text-primary);
+        }
+
+        .scenario-btn.active {
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, #0099cc 100%);
+            color: var(--base);
+            border-color: var(--accent-cyan);
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            background: var(--base);
+        }
+
+        .main::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .main::-webkit-scrollbar-track {
+            background: var(--base);
+        }
+
+        .main::-webkit-scrollbar-thumb {
+            background: var(--border-bright);
+            border-radius: 5px;
+        }
+
+        .placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 70vh;
+            text-align: center;
+        }
+
+        .placeholder-content h2 {
+            font-family: 'Orbitron', monospace;
+            font-size: 28px;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .placeholder-content p {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .dashboard.visible {
+            display: block;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            background: var(--surface);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 14px 20px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Orbitron', monospace;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+            background: var(--surface-raised);
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, #0099cc 100%);
+            color: var(--base);
+            box-shadow: 0 4px 16px rgba(0, 229, 255, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: slideInRight 0.4s ease-out;
+        }
+
+        /* Metric Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-elevated) 100%);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.2),
+                0 1px 3px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan) 0%, transparent 100%);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-bright);
+            box-shadow:
+                0 12px 24px rgba(0, 0, 0, 0.3),
+                0 6px 12px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .metric-card.highlight {
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, var(--surface-elevated) 100%);
+            border-color: var(--accent-cyan);
+        }
+
+        .metric-card.highlight::before {
+            background: linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-cyan) 100%);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .metric-card.success {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, var(--surface-elevated) 100%);
+            border-color: var(--accent-lime);
+        }
+
+        .metric-card.success::before {
+            background: linear-gradient(90deg, var(--accent-lime) 0%, var(--accent-lime) 100%);
+        }
+
+        .metric-card.warning {
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.15) 0%, var(--surface-elevated) 100%);
+            border-color: var(--accent-amber);
+        }
+
+        .metric-card.warning::before {
+            background: linear-gradient(90deg, var(--accent-amber) 0%, var(--accent-amber) 100%);
+        }
+
+        .metric-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.1;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .metric-card.highlight .metric-value {
+            color: var(--accent-cyan);
+        }
+
+        .metric-card.success .metric-value {
+            color: var(--accent-lime);
+        }
+
+        .metric-card.warning .metric-value {
+            color: var(--accent-amber);
+        }
+
+        .metric-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-card {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-elevated) 100%);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.2),
+                0 1px 3px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .chart-card:hover {
+            border-color: var(--border-bright);
+        }
+
+        .chart-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'Orbitron', monospace;
+        }
+
+        canvas {
+            max-height: 280px;
+        }
+
+        /* Milestones */
+        .milestones {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-elevated) 100%);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 32px;
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .milestone-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 20px;
+            margin-top: 8px;
+        }
+
+        .milestone-item {
+            text-align: center;
+            padding: 20px;
+            background: var(--surface-raised);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .milestone-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .milestone-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 4px;
+        }
+
+        .milestone-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Data Table */
+        .table-container {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-elevated) 100%);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .table-title {
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Orbitron', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+        }
+
+        .table-filters {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            background: var(--surface-elevated);
+            border-color: var(--border-bright);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-cyan);
+            color: var(--base);
+            border-color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-scroll::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: var(--border-bright);
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: right;
+            white-space: nowrap;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        th {
+            background: var(--surface-raised);
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th:first-child, td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: var(--surface-elevated);
+            z-index: 1;
+        }
+
+        th:first-child {
+            background: var(--surface-raised);
+            z-index: 2;
+        }
+
+        tr:nth-child(even) td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tr:nth-child(even) td:first-child {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tr:hover td {
+            background: rgba(0, 229, 255, 0.08);
+        }
+
+        .row-header {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .row-subheader {
+            padding-left: 32px;
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .row-total {
+            font-weight: 700;
+            background: var(--surface-raised) !important;
+            color: var(--text-primary);
+        }
+
+        .row-section {
+            background: var(--surface-raised) !important;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .positive { color: var(--accent-lime); }
+        .negative { color: var(--accent-coral); }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-success {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-lime);
+            border: 1px solid var(--accent-lime);
+        }
+
+        .badge-warning {
+            background: rgba(255, 170, 0, 0.2);
+            color: var(--accent-amber);
+            border: 1px solid var(--accent-amber);
+        }
+
+        .badge-danger {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--accent-coral);
+            border: 1px solid var(--accent-coral);
+        }
+
+        /* Comparison View */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .comparison-card {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-elevated) 100%);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .comparison-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .comparison-card h3 {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid;
+            font-family: 'Orbitron', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .comparison-card.pessimistic {
+            border-color: var(--accent-coral);
+        }
+        .comparison-card.pessimistic h3 {
+            border-color: var(--accent-coral);
+            color: var(--accent-coral);
+        }
+
+        .comparison-card.realistic {
+            border-color: var(--accent-cyan);
+        }
+        .comparison-card.realistic h3 {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .comparison-card.b2b {
+            border-color: var(--accent-amber);
+        }
+        .comparison-card.b2b h3 {
+            border-color: var(--accent-amber);
+            color: var(--accent-amber);
+        }
+
+        .comparison-card.optimistic {
+            border-color: var(--accent-lime);
+        }
+        .comparison-card.optimistic h3 {
+            border-color: var(--accent-lime);
+            color: var(--accent-lime);
+        }
+
+        .comparison-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-stat:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-label {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .comparison-value {
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 320px;
+            }
+            .comparison-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .main {
+                padding: 20px;
+            }
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Print Forge</h1>
+                <p>Bahrain Manufacturing Simulator</p>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Scenario Selection -->
+                <div class="section">
+                    <div class="section-title">Scenario</div>
+                    <div class="scenario-btns">
+                        <button class="scenario-btn" data-scenario="pessimistic">Pessimistic (+4)</button>
+                        <button class="scenario-btn active" data-scenario="realistic">Realistic (+10)</button>
+                        <button class="scenario-btn" data-scenario="b2b">B2B Focus (+8)</button>
+                        <button class="scenario-btn" data-scenario="optimistic">Optimistic (+18)</button>
+                    </div>
+                </div>
+
+                <!-- Growth -->
+                <div class="section">
+                    <div class="section-title">Growth</div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Start Orders</label>
+                            <input type="number" id="startOrders" value="10">
+                        </div>
+                        <div class="input-group half">
+                            <label>Growth/Month</label>
+                            <input type="number" id="monthlyGrowth" value="10">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Starting Cash</label>
+                        <input type="number" id="startingCash" value="8355">
+                        <small>BD (after setup costs)</small>
+                    </div>
+                </div>
+
+                <!-- Product Mix -->
+                <div class="section">
+                    <div class="section-title">Product Mix (%)</div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Small %</label>
+                            <input type="number" id="smallPct" value="55">
+                        </div>
+                        <div class="input-group half">
+                            <label>Medium %</label>
+                            <input type="number" id="mediumPct" value="25">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Large %</label>
+                            <input type="number" id="largePct" value="10">
+                        </div>
+                        <div class="input-group half">
+                            <label>Bulk %</label>
+                            <input type="number" id="bulkPct" value="10">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing -->
+                <div class="section">
+                    <div class="section-title">Pricing (BD)</div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Small</label>
+                            <input type="number" step="0.5" id="priceSmall" value="3">
+                        </div>
+                        <div class="input-group half">
+                            <label>Medium</label>
+                            <input type="number" step="0.5" id="priceMedium" value="8">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Large</label>
+                            <input type="number" step="0.5" id="priceLarge" value="15">
+                        </div>
+                        <div class="input-group half">
+                            <label>Bulk</label>
+                            <input type="number" step="5" id="priceBulk" value="50">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Print Times -->
+                <div class="section">
+                    <div class="section-title">Print Times (Hours)</div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Small</label>
+                            <input type="number" step="0.5" id="hoursSmall" value="1.5">
+                        </div>
+                        <div class="input-group half">
+                            <label>Medium</label>
+                            <input type="number" step="0.5" id="hoursMedium" value="3.5">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Large</label>
+                            <input type="number" step="0.5" id="hoursLarge" value="6">
+                        </div>
+                        <div class="input-group half">
+                            <label>Bulk</label>
+                            <input type="number" step="1" id="hoursBulk" value="10">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Costs -->
+                <div class="section">
+                    <div class="section-title">Costs</div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>COGS %</label>
+                            <input type="number" step="1" id="cogsPct" value="30">
+                        </div>
+                        <div class="input-group half">
+                            <label>Misc BD/mo</label>
+                            <input type="number" id="misc" value="50">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Marketing Min</label>
+                            <input type="number" id="marketingMin" value="50">
+                        </div>
+                        <div class="input-group half">
+                            <label>Marketing %</label>
+                            <input type="number" step="1" id="marketingPct" value="6">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>Rent BD/mo</label>
+                            <input type="number" id="rent" value="550">
+                        </div>
+                        <div class="input-group half">
+                            <label>Rent Start (M)</label>
+                            <input type="number" id="rentStart" value="18">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equipment -->
+                <div class="section">
+                    <div class="section-title">Equipment Triggers</div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>P2 Cost BD</label>
+                            <input type="number" id="printer2Cost" value="730">
+                        </div>
+                        <div class="input-group half">
+                            <label>P2 Trigger Hrs</label>
+                            <input type="number" id="printer2Trigger" value="360">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group half">
+                            <label>P3 Cost BD</label>
+                            <input type="number" id="printer3Cost" value="335">
+                        </div>
+                        <div class="input-group half">
+                            <label>P3 Trigger Hrs</label>
+                            <input type="number" id="printer3Trigger" value="720">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <button class="btn btn-primary" onclick="runSimulation()">Run Simulation</button>
+                <button class="btn btn-secondary" onclick="compareAll()">Compare All Scenarios</button>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div id="placeholder" class="placeholder">
+                <div class="placeholder-content">
+                    <h2>Manufacturing Ready</h2>
+                    <p>Configure parameters and run simulation</p>
+                </div>
+            </div>
+
+            <div id="dashboard" class="dashboard">
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="overview">Overview</button>
+                    <button class="tab" data-tab="monthly">Monthly Detail</button>
+                    <button class="tab" data-tab="comparison">Compare Scenarios</button>
+                </div>
+
+                <!-- Overview Tab -->
+                <div id="tab-overview" class="tab-content active">
+                    <div class="metrics-grid" id="metrics"></div>
+
+                    <div class="milestones">
+                        <div class="chart-title">Key Milestones</div>
+                        <div class="milestone-grid" id="milestones"></div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-title">Revenue & Profit</div>
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">Cash Balance</div>
+                            <canvas id="cashChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">Capacity Utilization</div>
+                            <canvas id="capacityChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">Orders by Type</div>
+                            <canvas id="ordersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Detail Tab -->
+                <div id="tab-monthly" class="tab-content">
+                    <div class="table-container">
+                        <div class="table-header">
+                            <div class="table-title">Month-by-Month Breakdown</div>
+                            <div class="table-filters">
+                                <button class="filter-btn active" data-year="1">Year 1</button>
+                                <button class="filter-btn" data-year="2">Year 2</button>
+                                <button class="filter-btn" data-year="all">All</button>
+                            </div>
+                        </div>
+                        <div class="table-scroll">
+                            <table id="monthlyTable"></table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Tab -->
+                <div id="tab-comparison" class="tab-content">
+                    <div class="comparison-grid" id="comparisonGrid"></div>
+                    <div class="chart-card">
+                        <div class="chart-title">Scenario Comparison - Revenue</div>
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Global state
+        let currentResults = [];
+        let charts = {};
+        let selectedYear = 1;
+
+        // Config from inputs
+        function getConfig() {
+            return {
+                startOrders: parseInt(document.getElementById('startOrders').value),
+                monthlyGrowth: parseInt(document.getElementById('monthlyGrowth').value),
+                startingCash: parseFloat(document.getElementById('startingCash').value),
+
+                smallPct: parseFloat(document.getElementById('smallPct').value) / 100,
+                mediumPct: parseFloat(document.getElementById('mediumPct').value) / 100,
+                largePct: parseFloat(document.getElementById('largePct').value) / 100,
+                bulkPctStart: parseFloat(document.getElementById('bulkPct').value) / 100,
+                bulkPctEnd: 0.30,
+
+                priceSmall: parseFloat(document.getElementById('priceSmall').value),
+                priceMedium: parseFloat(document.getElementById('priceMedium').value),
+                priceLarge: parseFloat(document.getElementById('priceLarge').value),
+                priceBulk: parseFloat(document.getElementById('priceBulk').value),
+
+                hoursSmall: parseFloat(document.getElementById('hoursSmall').value),
+                hoursMedium: parseFloat(document.getElementById('hoursMedium').value),
+                hoursLarge: parseFloat(document.getElementById('hoursLarge').value),
+                hoursBulk: parseFloat(document.getElementById('hoursBulk').value),
+
+                cogsPct: parseFloat(document.getElementById('cogsPct').value) / 100,
+                misc: parseFloat(document.getElementById('misc').value),
+                marketingMin: parseFloat(document.getElementById('marketingMin').value),
+                marketingPct: parseFloat(document.getElementById('marketingPct').value) / 100,
+                rent: parseFloat(document.getElementById('rent').value),
+                rentStart: parseInt(document.getElementById('rentStart').value),
+
+                printer2Cost: parseFloat(document.getElementById('printer2Cost').value),
+                printer2Trigger: parseFloat(document.getElementById('printer2Trigger').value),
+                printer3Cost: parseFloat(document.getElementById('printer3Cost').value),
+                printer3Trigger: parseFloat(document.getElementById('printer3Trigger').value),
+
+                printerCapacity: 480,
+                gmTiers: [[300, 100], [600, 200], [900, 350], [1200, 450], [1500, 550], [99999, 600]],
+                emp2Trigger: 2500,
+                emp2Salary: 500,
+                reserveTarget: 6000,
+                minProfitTake: 300,
+                crRenewal: 166,
+                visaRenewal: 390
+            };
+        }
+
+        // GM Salary calculation
+        function getGMSalary(revenue, config) {
+            for (let [threshold, salary] of config.gmTiers) {
+                if (revenue <= threshold) return salary;
+            }
+            return 600;
+        }
+
+        // Marketing calculation
+        function getMarketing(revenue, config) {
+            return Math.max(config.marketingMin, Math.min(500, revenue * config.marketingPct));
+        }
+
+        // Bulk percentage progression
+        function getBulkPct(month, config, scenario) {
+            if (scenario === 'b2b') return 0.30;
+            if (month >= 12) return config.bulkPctEnd;
+            const progress = (month - 1) / 11;
+            return config.bulkPctStart + (config.bulkPctEnd - config.bulkPctStart) * progress;
+        }
+
+        // Your take calculation
+        function getYourTake(netProfit, cash, config) {
+            if (netProfit < config.minProfitTake || cash < config.reserveTarget) return 0;
+            if (netProfit < 500) return netProfit * 0.50;
+            if (netProfit < 800) return netProfit * 0.75;
+            return netProfit;
+        }
+
+        // Main simulation
+        function simulate(scenario = 'realistic', config = null) {
+            if (!config) config = getConfig();
+
+            const results = [];
+            let cash = config.startingCash;
+            let orders = config.startOrders;
+            let printers = 1;
+            let hasEmp2 = false;
+
+            const growthRates = {
+                pessimistic: 4,
+                realistic: config.monthlyGrowth,
+                b2b: 8,
+                optimistic: 18
+            };
+            const growth = growthRates[scenario] || config.monthlyGrowth;
+
+            for (let month = 1; month <= 24; month++) {
+                // Product mix
+                let bulkPct = getBulkPct(month, config, scenario);
+                let smallPct, mediumPct, largePct;
+
+                if (scenario === 'b2b') {
+                    smallPct = 0.40;
+                    const remaining = 1 - bulkPct - smallPct;
+                    mediumPct = remaining * 0.6;
+                    largePct = remaining * 0.4;
+                } else {
+                    const totalOther = config.smallPct + config.mediumPct + config.largePct;
+                    const scale = (1 - bulkPct) / totalOther;
+                    smallPct = config.smallPct * scale;
+                    mediumPct = config.mediumPct * scale;
+                    largePct = config.largePct * scale;
+                }
+
+                // Orders by type
+                const smallOrders = Math.round(orders * smallPct);
+                const mediumOrders = Math.round(orders * mediumPct);
+                const largeOrders = Math.round(orders * largePct);
+                const bulkOrders = Math.round(orders * bulkPct);
+
+                // Print hours
+                const smallHours = smallOrders * config.hoursSmall;
+                const mediumHours = mediumOrders * config.hoursMedium;
+                const largeHours = largeOrders * config.hoursLarge;
+                const bulkHours = bulkOrders * config.hoursBulk;
+                const totalHours = smallHours + mediumHours + largeHours + bulkHours;
+
+                // Revenue
+                const smallRevenue = smallOrders * config.priceSmall;
+                const mediumRevenue = mediumOrders * config.priceMedium;
+                const largeRevenue = largeOrders * config.priceLarge;
+                const bulkRevenue = bulkOrders * config.priceBulk;
+                const totalRevenue = smallRevenue + mediumRevenue + largeRevenue + bulkRevenue;
+
+                // Costs
+                const cogs = totalRevenue * config.cogsPct;
+                const grossProfit = totalRevenue - cogs;
+
+                // OpEx
+                const gmSalary = getGMSalary(totalRevenue, config);
+                const marketing = getMarketing(totalRevenue, config);
+                const emp2Salary = hasEmp2 ? config.emp2Salary : 0;
+                const rentCost = month >= config.rentStart ? config.rent : 0;
+                const crRenewal = month % 12 === 0 ? config.crRenewal : 0;
+                const visaRenewal = month % 24 === 0 ? config.visaRenewal : 0;
+                const totalOpex = gmSalary + marketing + config.misc + emp2Salary + rentCost + crRenewal + visaRenewal;
+
+                const netProfit = grossProfit - totalOpex;
+
+                // Equipment
+                let equipmentCost = 0;
+                if (printers < 2 && totalHours > config.printer2Trigger) {
+                    equipmentCost += config.printer2Cost;
+                    printers = 2;
+                }
+                if (printers < 3 && totalHours > config.printer3Trigger) {
+                    equipmentCost += config.printer3Cost;
+                    printers = 3;
+                }
+
+                // Cash flow
+                const cashBeforeTake = cash + netProfit - equipmentCost;
+                const yourTake = getYourTake(netProfit, cashBeforeTake, config);
+                const cashEnd = cashBeforeTake - yourTake;
+
+                // Capacity
+                const capacityHours = printers * config.printerCapacity;
+                const capacityPct = (totalHours / capacityHours) * 100;
+
+                // Employee 2 check
+                if (totalRevenue >= config.emp2Trigger) hasEmp2 = true;
+
+                results.push({
+                    month,
+                    scenario,
+                    // Orders
+                    totalOrders: orders,
+                    smallOrders,
+                    mediumOrders,
+                    largeOrders,
+                    bulkOrders,
+                    // Hours
+                    smallHours,
+                    mediumHours,
+                    largeHours,
+                    bulkHours,
+                    totalHours,
+                    avgHoursPerOrder: totalHours / orders,
+                    // Revenue
+                    smallRevenue,
+                    mediumRevenue,
+                    largeRevenue,
+                    bulkRevenue,
+                    totalRevenue,
+                    // Costs
+                    cogs,
+                    grossProfit,
+                    grossMarginPct: (grossProfit / totalRevenue) * 100,
+                    gmSalary,
+                    marketing,
+                    misc: config.misc,
+                    emp2Salary,
+                    rent: rentCost,
+                    crRenewal,
+                    visaRenewal,
+                    totalOpex,
+                    // Profit
+                    netProfit,
+                    netMarginPct: (netProfit / totalRevenue) * 100,
+                    // Cash
+                    cashStart: cash,
+                    equipmentCost,
+                    yourTake,
+                    retainedEarnings: netProfit - yourTake,
+                    cashEnd,
+                    // Operations
+                    printers,
+                    capacityHours,
+                    capacityPct,
+                    employees: hasEmp2 ? 2 : 1,
+                    // Flags
+                    isProfitable: netProfit > 0,
+                    takeEligible: yourTake > 0,
+                    atCapacity: capacityPct > 75
+                });
+
+                // Update for next month
+                cash = cashEnd;
+                orders += growth;
+            }
+
+            return results;
+        }
+
+        // Run simulation
+        function runSimulation() {
+            const activeScenario = document.querySelector('.scenario-btn.active').dataset.scenario;
+            currentResults = simulate(activeScenario);
+
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('dashboard').classList.add('visible');
+
+            renderOverview();
+            renderMonthlyTable();
+        }
+
+        // Compare all scenarios
+        function compareAll() {
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('dashboard').classList.add('visible');
+
+            // Switch to comparison tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-tab="comparison"]').classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-comparison').classList.add('active');
+
+            renderComparison();
+        }
+
+        // Render overview
+        function renderOverview() {
+            const m12 = currentResults[11];
+            const m24 = currentResults[23];
+
+            const totalRevenue = currentResults.reduce((s, m) => s + m.totalRevenue, 0);
+            const totalProfit = currentResults.reduce((s, m) => s + m.netProfit, 0);
+            const totalTake = currentResults.reduce((s, m) => s + m.yourTake, 0);
+
+            const breakEven = currentResults.find(m => m.isProfitable);
+            const firstTake = currentResults.find(m => m.takeEligible);
+            const firstCapacity = currentResults.find(m => m.atCapacity);
+
+            // Metrics
+            document.getElementById('metrics').innerHTML = `
+                <div class="metric-card highlight">
+                    <div class="metric-label">24-Month Revenue</div>
+                    <div class="metric-value">BD ${Math.round(totalRevenue).toLocaleString()}</div>
+                    <div class="metric-sub">Total over 2 years</div>
+                </div>
+                <div class="metric-card highlight">
+                    <div class="metric-label">Total Profit</div>
+                    <div class="metric-value">BD ${Math.round(totalProfit).toLocaleString()}</div>
+                    <div class="metric-sub">Net profit</div>
+                </div>
+                <div class="metric-card ${totalTake > 0 ? 'success' : ''}">
+                    <div class="metric-label">Your Take</div>
+                    <div class="metric-value">BD ${Math.round(totalTake).toLocaleString()}</div>
+                    <div class="metric-sub">In your pocket</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Final Cash</div>
+                    <div class="metric-value">BD ${Math.round(m24.cashEnd).toLocaleString()}</div>
+                    <div class="metric-sub">Month 24 balance</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Month 24 Orders</div>
+                    <div class="metric-value">${m24.totalOrders}</div>
+                    <div class="metric-sub">${m24.printers} printers</div>
+                </div>
+                <div class="metric-card ${m24.capacityPct > 75 ? 'warning' : ''}">
+                    <div class="metric-label">Capacity Used</div>
+                    <div class="metric-value">${Math.round(m24.capacityPct)}%</div>
+                    <div class="metric-sub">${Math.round(m24.totalHours)}/${m24.capacityHours} hrs</div>
+                </div>
+            `;
+
+            // Milestones
+            document.getElementById('milestones').innerHTML = `
+                <div class="milestone-item">
+                    <div class="milestone-value">M${breakEven ? breakEven.month : '-'}</div>
+                    <div class="milestone-label">Break-even</div>
+                </div>
+                <div class="milestone-item">
+                    <div class="milestone-value">M${firstTake ? firstTake.month : '-'}</div>
+                    <div class="milestone-label">First Take</div>
+                </div>
+                <div class="milestone-item">
+                    <div class="milestone-value">M${firstCapacity ? firstCapacity.month : '-'}</div>
+                    <div class="milestone-label">75% Capacity</div>
+                </div>
+                <div class="milestone-item">
+                    <div class="milestone-value">${m12.printers}</div>
+                    <div class="milestone-label">Printers @ M12</div>
+                </div>
+                <div class="milestone-item">
+                    <div class="milestone-value">BD ${Math.round(m12.totalRevenue)}</div>
+                    <div class="milestone-label">Revenue @ M12</div>
+                </div>
+                <div class="milestone-item">
+                    <div class="milestone-value">BD ${Math.round(m24.totalRevenue)}</div>
+                    <div class="milestone-label">Revenue @ M24</div>
+                </div>
+            `;
+
+            // Charts
+            renderCharts();
+        }
+
+        // Render charts
+        function renderCharts() {
+            const labels = currentResults.map(m => `M${m.month}`);
+
+            // Destroy existing charts
+            Object.values(charts).forEach(c => c && c.destroy());
+
+            // Chart defaults for dark theme
+            Chart.defaults.color = '#8b93a6';
+            Chart.defaults.borderColor = '#2a3240';
+
+            // Revenue & Profit
+            const ctx1 = document.getElementById('revenueChart').getContext('2d');
+            charts.revenue = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: currentResults.map(m => m.totalRevenue),
+                            backgroundColor: 'rgba(0, 229, 255, 0.7)',
+                            borderRadius: 6,
+                            borderWidth: 0
+                        },
+                        {
+                            label: 'Net Profit',
+                            data: currentResults.map(m => m.netProfit),
+                            backgroundColor: currentResults.map(m => m.netProfit > 0 ? 'rgba(0, 255, 136, 0.7)' : 'rgba(255, 107, 107, 0.7)'),
+                            borderRadius: 6,
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { family: 'Manrope', size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => 'BD ' + v,
+                                font: { family: 'JetBrains Mono', size: 10 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { family: 'JetBrains Mono', size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Cash
+            const ctx2 = document.getElementById('cashChart').getContext('2d');
+            charts.cash = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Cash Balance',
+                        data: currentResults.map(m => m.cashEnd),
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#a855f7',
+                        pointBorderColor: '#252b3d',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => 'BD ' + v,
+                                font: { family: 'JetBrains Mono', size: 10 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { family: 'JetBrains Mono', size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Capacity
+            const ctx3 = document.getElementById('capacityChart').getContext('2d');
+            charts.capacity = new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Capacity %',
+                        data: currentResults.map(m => m.capacityPct),
+                        borderColor: '#ffaa00',
+                        backgroundColor: 'rgba(255, 170, 0, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#ffaa00',
+                        pointBorderColor: '#252b3d',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            ticks: {
+                                callback: v => v + '%',
+                                font: { family: 'JetBrains Mono', size: 10 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { family: 'JetBrains Mono', size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Orders
+            const ctx4 = document.getElementById('ordersChart').getContext('2d');
+            charts.orders = new Chart(ctx4, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Small', data: currentResults.map(m => m.smallOrders), backgroundColor: '#00e5ff', borderRadius: 4, borderWidth: 0 },
+                        { label: 'Medium', data: currentResults.map(m => m.mediumOrders), backgroundColor: '#00ff88', borderRadius: 4, borderWidth: 0 },
+                        { label: 'Large', data: currentResults.map(m => m.largeOrders), backgroundColor: '#ffaa00', borderRadius: 4, borderWidth: 0 },
+                        { label: 'Bulk', data: currentResults.map(m => m.bulkOrders), backgroundColor: '#a855f7', borderRadius: 4, borderWidth: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { family: 'Manrope', size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { font: { family: 'JetBrains Mono', size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: { font: { family: 'JetBrains Mono', size: 10 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Render monthly table
+        function renderMonthlyTable() {
+            const months = selectedYear === 'all' ? currentResults :
+                           selectedYear === 1 ? currentResults.slice(0, 12) : currentResults.slice(12, 24);
+
+            const headers = months.map(m => `M${m.month}`);
+
+            const rows = [
+                { section: true, label: 'ORDERS' },
+                { label: 'Total Orders', key: 'totalOrders', format: 'int' },
+                { label: '├ Small', key: 'smallOrders', format: 'int', sub: true },
+                { label: '├ Medium', key: 'mediumOrders', format: 'int', sub: true },
+                { label: '├ Large', key: 'largeOrders', format: 'int', sub: true },
+                { label: '└ Bulk', key: 'bulkOrders', format: 'int', sub: true },
+
+                { section: true, label: 'PRINT HOURS' },
+                { label: 'Total Hours', key: 'totalHours', format: 'dec1', total: true },
+                { label: 'Avg Hrs/Order', key: 'avgHoursPerOrder', format: 'dec2' },
+
+                { section: true, label: 'REVENUE' },
+                { label: 'Small Revenue', key: 'smallRevenue', format: 'bd', sub: true },
+                { label: 'Medium Revenue', key: 'mediumRevenue', format: 'bd', sub: true },
+                { label: 'Large Revenue', key: 'largeRevenue', format: 'bd', sub: true },
+                { label: 'Bulk Revenue', key: 'bulkRevenue', format: 'bd', sub: true },
+                { label: 'Total Revenue', key: 'totalRevenue', format: 'bd', total: true },
+
+                { section: true, label: 'COSTS & PROFIT' },
+                { label: 'COGS', key: 'cogs', format: 'bd' },
+                { label: 'Gross Profit', key: 'grossProfit', format: 'bd', total: true },
+                { label: 'Gross Margin %', key: 'grossMarginPct', format: 'pct' },
+
+                { section: true, label: 'OPERATING EXPENSES' },
+                { label: 'GM Salary', key: 'gmSalary', format: 'bd', sub: true },
+                { label: 'Marketing', key: 'marketing', format: 'bd', sub: true },
+                { label: 'Miscellaneous', key: 'misc', format: 'bd', sub: true },
+                { label: 'Employee 2', key: 'emp2Salary', format: 'bd', sub: true },
+                { label: 'Rent', key: 'rent', format: 'bd', sub: true },
+                { label: 'Total OpEx', key: 'totalOpex', format: 'bd', total: true },
+
+                { section: true, label: 'BOTTOM LINE' },
+                { label: 'Net Profit', key: 'netProfit', format: 'bd', total: true, highlight: true },
+                { label: 'Net Margin %', key: 'netMarginPct', format: 'pct' },
+                { label: 'Your Take', key: 'yourTake', format: 'bd' },
+
+                { section: true, label: 'CASH FLOW' },
+                { label: 'Cash Start', key: 'cashStart', format: 'bd', sub: true },
+                { label: 'Equipment', key: 'equipmentCost', format: 'bd', sub: true },
+                { label: 'Cash End', key: 'cashEnd', format: 'bd', total: true },
+
+                { section: true, label: 'OPERATIONS' },
+                { label: '# Printers', key: 'printers', format: 'int' },
+                { label: 'Capacity Available', key: 'capacityHours', format: 'int' },
+                { label: 'Capacity Used %', key: 'capacityPct', format: 'pct' },
+                { label: '# Employees', key: 'employees', format: 'int' }
+            ];
+
+            let html = `<thead><tr><th>Metric</th>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+
+            for (const row of rows) {
+                if (row.section) {
+                    html += `<tr class="row-section"><td colspan="${months.length + 1}">${row.label}</td></tr>`;
+                } else {
+                    const cls = row.total ? 'row-total' : row.sub ? 'row-subheader' : 'row-header';
+                    html += `<tr><td class="${cls}">${row.label}</td>`;
+
+                    for (const m of months) {
+                        let val = m[row.key];
+                        let formatted;
+
+                        switch (row.format) {
+                            case 'int': formatted = Math.round(val).toLocaleString(); break;
+                            case 'dec1': formatted = val.toFixed(1); break;
+                            case 'dec2': formatted = val.toFixed(2); break;
+                            case 'bd': formatted = Math.round(val).toLocaleString(); break;
+                            case 'pct': formatted = Math.round(val) + '%'; break;
+                            default: formatted = val;
+                        }
+
+                        let valCls = '';
+                        if (row.highlight && val < 0) valCls = 'negative';
+                        if (row.highlight && val > 0) valCls = 'positive';
+
+                        html += `<td class="${valCls}">${formatted}</td>`;
+                    }
+                    html += '</tr>';
+                }
+            }
+
+            html += '</tbody>';
+            document.getElementById('monthlyTable').innerHTML = html;
+        }
+
+        // Render comparison
+        function renderComparison() {
+            const config = getConfig();
+            const scenarios = ['pessimistic', 'realistic', 'b2b', 'optimistic'];
+            const allResults = {};
+
+            for (const s of scenarios) {
+                allResults[s] = simulate(s, config);
+            }
+
+            // Comparison cards
+            let html = '';
+            for (const s of scenarios) {
+                const results = allResults[s];
+                const m12 = results[11];
+                const m24 = results[23];
+                const totalRevenue = results.reduce((sum, m) => sum + m.totalRevenue, 0);
+                const totalProfit = results.reduce((sum, m) => sum + m.netProfit, 0);
+                const totalTake = results.reduce((sum, m) => sum + m.yourTake, 0);
+                const breakEven = results.find(m => m.isProfitable);
+                const firstTake = results.find(m => m.takeEligible);
+
+                const growth = s === 'pessimistic' ? 4 : s === 'realistic' ? 10 : s === 'b2b' ? 8 : 18;
+
+                html += `
+                    <div class="comparison-card ${s}">
+                        <h3>${s.charAt(0).toUpperCase() + s.slice(1)} (+${growth}/mo)</h3>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">24-Mo Revenue</span>
+                            <span class="comparison-value">BD ${Math.round(totalRevenue).toLocaleString()}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">Total Profit</span>
+                            <span class="comparison-value ${totalProfit < 0 ? 'negative' : ''}">BD ${Math.round(totalProfit).toLocaleString()}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">Your Take</span>
+                            <span class="comparison-value">BD ${Math.round(totalTake).toLocaleString()}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">Final Cash</span>
+                            <span class="comparison-value">BD ${Math.round(m24.cashEnd).toLocaleString()}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">Break-even</span>
+                            <span class="comparison-value">Month ${breakEven ? breakEven.month : '-'}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">First Take</span>
+                            <span class="comparison-value">Month ${firstTake ? firstTake.month : '-'}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">M12 Revenue</span>
+                            <span class="comparison-value">BD ${Math.round(m12.totalRevenue).toLocaleString()}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-label">M24 Revenue</span>
+                            <span class="comparison-value">BD ${Math.round(m24.totalRevenue).toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('comparisonGrid').innerHTML = html;
+
+            // Comparison chart
+            if (charts.comparison) charts.comparison.destroy();
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            const labels = allResults.realistic.map(m => `M${m.month}`);
+
+            charts.comparison = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Pessimistic',
+                            data: allResults.pessimistic.map(m => m.totalRevenue),
+                            borderColor: '#ff6b6b',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Realistic',
+                            data: allResults.realistic.map(m => m.totalRevenue),
+                            borderColor: '#00e5ff',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'B2B Focus',
+                            data: allResults.b2b.map(m => m.totalRevenue),
+                            borderColor: '#ffaa00',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Optimistic',
+                            data: allResults.optimistic.map(m => m.totalRevenue),
+                            borderColor: '#00ff88',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { family: 'Manrope', size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => 'BD ' + v,
+                                font: { family: 'JetBrains Mono', size: 10 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { family: 'JetBrains Mono', size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Event listeners
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const rates = { pessimistic: 4, realistic: 10, b2b: 8, optimistic: 18 };
+                document.getElementById('monthlyGrowth').value = rates[btn.dataset.scenario];
+            });
+        });
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+
+                if (tab.dataset.tab === 'comparison') {
+                    renderComparison();
+                }
+            });
+        });
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedYear = btn.dataset.year === 'all' ? 'all' : parseInt(btn.dataset.year);
+                renderMonthlyTable();
+            });
+        });
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            runSimulation();
+        });
+    </script>
+</body>
+</html>
