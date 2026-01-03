@@ -1119,10 +1119,10 @@
                 <div class="section">
                     <div class="section-title">Scenario</div>
                     <div class="scenario-btns">
-                        <button class="scenario-btn" data-scenario="pessimistic">Pessimistic (+4)</button>
-                        <button class="scenario-btn active" data-scenario="realistic">Realistic (+10)</button>
-                        <button class="scenario-btn" data-scenario="b2b">B2B Focus (+8)</button>
-                        <button class="scenario-btn" data-scenario="optimistic">Optimistic (+18)</button>
+                        <button class="scenario-btn" data-scenario="pessimistic">Pessimistic (+4%)</button>
+                        <button class="scenario-btn active" data-scenario="realistic">Realistic (+10%)</button>
+                        <button class="scenario-btn" data-scenario="b2b">B2B Focus (+8%)</button>
+                        <button class="scenario-btn" data-scenario="optimistic">Optimistic (+18%)</button>
                     </div>
                 </div>
 
@@ -1135,8 +1135,9 @@
                             <input type="number" id="startOrders" value="10">
                         </div>
                         <div class="input-group half">
-                            <label>Growth/Month</label>
-                            <input type="number" id="monthlyGrowth" value="10">
+                            <label>Growth % /Month</label>
+                            <input type="number" id="monthlyGrowth" value="10" step="1">
+                            <small>Percentage growth rate</small>
                         </div>
                     </div>
                     <div class="input-group">
@@ -1364,9 +1365,9 @@
                         <div class="table-header">
                             <div class="table-title">Month-by-Month Breakdown</div>
                             <div class="table-filters">
-                                <button class="filter-btn active" data-year="1">Year 1</button>
+                                <button class="filter-btn" data-year="1">Year 1</button>
                                 <button class="filter-btn" data-year="2">Year 2</button>
-                                <button class="filter-btn" data-year="all">All</button>
+                                <button class="filter-btn active" data-year="all">All</button>
                             </div>
                         </div>
                         <div class="table-scroll">
@@ -1614,7 +1615,7 @@
         // Global state
         let currentResults = [];
         let charts = {};
-        let selectedYear = 1;
+        let selectedYear = 'all';
 
         // Config from inputs
         function getConfig() {
@@ -1720,12 +1721,12 @@
             let hasEmp2 = false;
 
             const growthRates = {
-                pessimistic: 4,
-                realistic: config.monthlyGrowth,
-                b2b: 8,
-                optimistic: 18
+                pessimistic: 4,  // 4% per month
+                realistic: config.monthlyGrowth,  // From config
+                b2b: 8,  // 8% per month
+                optimistic: 18  // 18% per month
             };
-            const growth = growthRates[scenario] || config.monthlyGrowth;
+            const growthPct = growthRates[scenario] || config.monthlyGrowth;
 
             for (let month = 1; month <= 24; month++) {
                 // Product mix
@@ -1859,7 +1860,7 @@
 
                 // Update for next month
                 cash = cashEnd;
-                orders += growth;
+                orders = Math.round(orders * (1 + growthPct / 100));
             }
 
             return results;
@@ -2288,7 +2289,7 @@
 
                 html += `
                     <div class="comparison-card ${s}">
-                        <h3>${s.charAt(0).toUpperCase() + s.slice(1)} (+${growth}/mo)</h3>
+                        <h3>${s.charAt(0).toUpperCase() + s.slice(1)} (+${growth}%)</h3>
                         <div class="comparison-stat">
                             <span class="comparison-label">24-Mo Revenue</span>
                             <span class="comparison-value">BD ${Math.round(totalRevenue).toLocaleString()}</span>
